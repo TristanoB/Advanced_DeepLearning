@@ -1,26 +1,32 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import torch_geometric.nn as graphnn
 
 # Define model ( in your class_model_gnn.py)
 class StudentModel(nn.Module):
     def __init__(self):
         super(StudentModel, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
+        n_features = 50
+        hidden_dim = 256
+        n_classes = 121
+        self.conv1 = graphnn.GCNConv(n_features, hidden_dim)
+        self.att1 = graphnn.GATConv(n_features,hidden_dim,heads=3)
+        self.conv2 = graphnn.GCNConv(hidden_dim, hidden_dim)
+        self.att2 = graphnn.GATConv(hidden_dim,hidden_dim,heads=3)
+        self.conv3 = graphnn.GCNConv(hidden_dim, hidden_dim)
+        self.att3 = graphnn.GATConv(hidden_dim,hidden_dim,heads=3)
+        self.fc1 = nn.Linear(hidden_dim, n_classes) 
+        self.elu = nn.ELU()
 
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 5 * 5)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+    def forward(self, x, edge_index):
+        x = self.att1(x, edge_index)
+        x = self.elu(x)
+        x = self.att2(x, edge_index)
+        x = self.elu(x)
+        x = self.att3(x, edge_index)
+        x = self.elu(x)
+        x = self.fc1(x)
         return x
 
 
